@@ -37,7 +37,7 @@ import com.android.settingslib.Utils
  * A battery meter drawable that respects paths configured in
  * frameworks/base/core/res/res/values/config.xml to allow for an easily overrideable battery icon
  */
-open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) : Drawable() {
+open class LandscapeBatteryDrawableSignal(private val context: Context, frameColor: Int) : Drawable() {
 
     // Need to load:
     // 1. perimeter shape
@@ -259,7 +259,9 @@ open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) 
             // If power save is enabled draw the perimeter path with colorError
             c.drawPath(scaledErrorPerimeter, errorPaint)
             // And draw the plus sign on top of the fill
-            c.drawPath(scaledPlus, errorPaint)
+            if (!showPercent) {
+                c.drawPath(scaledPlus, errorPaint)
+            }
         }
         c.restore()
 
@@ -415,27 +417,27 @@ open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) 
 
     private fun loadPaths() {
         val pathString = context.resources.getString(
-                com.android.internal.R.string.config_batterymeterPerimeterPath)
+                com.android.internal.R.string.config_batterymeterLandPerimeterPathSignal)
         perimeterPath.set(PathParser.createPathFromPathData(pathString))
         perimeterPath.computeBounds(RectF(), true)
 
         val errorPathString = context.resources.getString(
-                com.android.internal.R.string.config_batterymeterErrorPerimeterPath)
+                com.android.internal.R.string.config_batterymeterLandErrorPerimeterPathSignal)
         errorPerimeterPath.set(PathParser.createPathFromPathData(errorPathString))
         errorPerimeterPath.computeBounds(RectF(), true)
 
         val fillMaskString = context.resources.getString(
-                com.android.internal.R.string.config_batterymeterFillMask)
+                com.android.internal.R.string.config_batterymeterLandFillMaskSignal)
         fillMask.set(PathParser.createPathFromPathData(fillMaskString))
         // Set the fill rect so we can calculate the fill properly
         fillMask.computeBounds(fillRect, true)
 
         val boltPathString = context.resources.getString(
-                com.android.internal.R.string.config_batterymeterBoltPath)
+                com.android.internal.R.string.config_batterymeterLandBoltPathSignal)
         boltPath.set(PathParser.createPathFromPathData(boltPathString))
 
         val plusPathString = context.resources.getString(
-                com.android.internal.R.string.config_batterymeterPowersavePath)
+                com.android.internal.R.string.config_batterymeterLandPowersavePathSignal)
         plusPath.set(PathParser.createPathFromPathData(plusPathString))
 
         dualTone = context.resources.getBoolean(
@@ -443,13 +445,14 @@ open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) 
     }
 
     companion object {
-        const val WIDTH = 12f
-        const val HEIGHT = 20f
+        private const val TAG = "LandscapeBatteryDrawableSignal"
+        private const val WIDTH = 12f
+        private const val HEIGHT = 20f
         private const val CRITICAL_LEVEL = 15
         // On a 12x20 grid, how wide to make the fill protection stroke.
         // Scales when our size changes
         private const val PROTECTION_STROKE_WIDTH = 3f
         // Arbitrarily chosen for visibility at small sizes
-        const val PROTECTION_MIN_STROKE_WIDTH = 6f
+        private const val PROTECTION_MIN_STROKE_WIDTH = 6f
     }
 }

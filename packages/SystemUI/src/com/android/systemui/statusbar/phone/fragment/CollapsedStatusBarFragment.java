@@ -72,6 +72,7 @@ import com.android.systemui.statusbar.phone.StatusBarIconController;
 import com.android.systemui.statusbar.phone.StatusBarIconController.DarkIconManager;
 import com.android.systemui.statusbar.phone.StatusBarLocation;
 import com.android.systemui.statusbar.phone.StatusBarLocationPublisher;
+import com.android.systemui.statusbar.phone.StatusIconContainer;
 import com.android.systemui.statusbar.phone.fragment.dagger.StatusBarFragmentComponent;
 import com.android.systemui.statusbar.phone.fragment.dagger.StatusBarFragmentComponent.Startable;
 import com.android.systemui.statusbar.phone.ongoingcall.OngoingCallController;
@@ -105,6 +106,8 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
 
     private static final String STATUSBAR_CLOCK_CHIP =
             "system:" + Settings.System.STATUSBAR_CLOCK_CHIP;
+    private static final String STATUS_BAR_BATTERY_STYLE =
+            "system:" + Settings.System.STATUS_BAR_BATTERY_STYLE;
 
     public static final String TAG = "CollapsedStatusBarFragment";
     private static final String EXTRA_PANEL_STATE = "panel_state";
@@ -140,6 +143,7 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
     private final CarrierConfigTracker mCarrierConfigTracker;
     private final StatusBarHideIconsForBouncerManager mStatusBarHideIconsForBouncerManager;
     private final StatusBarIconController.DarkIconManager.Factory mDarkIconManagerFactory;
+    private final TunerService mTunerService;
     private final DumpManager mDumpManager;
     private final StatusBarWindowStateController mStatusBarWindowStateController;
     private final KeyguardUpdateMonitor mKeyguardUpdateMonitor;
@@ -149,6 +153,8 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
     private int mShowSBClockBg;
     private LyricController mLyricController;
     private View mLeftLogo;
+    private StatusIconContainer mStatusIcons;
+    private int mSignalClusterEndPadding = 0;
 
     private List<String> mBlockedIcons = new ArrayList<>();
     private Map<Startable, Startable.State> mStartableStates = new ArrayMap<>();
@@ -219,6 +225,7 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
             CarrierConfigTracker carrierConfigTracker,
             CollapsedStatusBarFragmentLogger collapsedStatusBarFragmentLogger,
             OperatorNameViewController.Factory operatorNameViewControllerFactory,
+            TunerService tunerService,
             DumpManager dumpManager,
             StatusBarWindowStateController statusBarWindowStateController,
             KeyguardUpdateMonitor keyguardUpdateMonitor
@@ -240,6 +247,7 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
         mCarrierConfigTracker = carrierConfigTracker;
         mCollapsedStatusBarFragmentLogger = collapsedStatusBarFragmentLogger;
         mOperatorNameViewControllerFactory = operatorNameViewControllerFactory;
+        mTunerService = tunerService;
         mDumpManager = dumpManager;
         mStatusBarWindowStateController = statusBarWindowStateController;
         mKeyguardUpdateMonitor = keyguardUpdateMonitor;
@@ -293,6 +301,8 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
         mStatusBarIconController.addIconGroup(mDarkIconManager);
         mEndSideContent = mStatusBar.findViewById(R.id.status_bar_end_side_content);
         mClockController = mStatusBar.getClockController();
+        mSignalClusterEndPadding = getResources().getDimensionPixelSize(R.dimen.signal_cluster_battery_padding);
+        mStatusIcons = mStatusBar.findViewById(R.id.statusIcons);
         mOngoingCallChip = mStatusBar.findViewById(R.id.ongoing_call_chip);
         mLeftLogo = mStatusBar.findViewById(R.id.statusbar_logo);
         mCenterClock = mStatusBar.findViewById(R.id.clock_center);
@@ -312,6 +322,8 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
                 new StatusBarSystemEventAnimator(mEndSideContent, getResources());
         mCarrierConfigTracker.addCallback(mCarrierConfigCallback);
         mCarrierConfigTracker.addDefaultDataSubscriptionChangedListener(mDefaultDataListener);
+
+        mTunerService.addTunable(this, STATUS_BAR_BATTERY_STYLE);
     }
 
     @Override
@@ -348,6 +360,7 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        mTunerService.removeTunable(this);
         mStatusBarIconController.removeIconGroup(mDarkIconManager);
         mCarrierConfigTracker.removeCallback(mCarrierConfigCallback);
         mCarrierConfigTracker.removeDataSubscriptionChangedListener(mDefaultDataListener);
@@ -382,6 +395,13 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
                 mShowSBClockBg = 
                         TunerService.parseInteger(newValue, 0);
                 updateStatusBarClock();
+                break;
+            case STATUS_BAR_BATTERY_STYLE:
+                int batteryStyle =
+                        TunerService.parseInteger(newValue, 0);
+                mStatusIcons.setPadding(mStatusIcons.getPaddingLeft(), mStatusIcons.getPaddingTop(),
+                        (batteryStyle == 5/*hidden*/ ? 0 : mSignalClusterEndPadding),
+                        mStatusIcons.getPaddingBottom());
                 break;
             default:
                 break;

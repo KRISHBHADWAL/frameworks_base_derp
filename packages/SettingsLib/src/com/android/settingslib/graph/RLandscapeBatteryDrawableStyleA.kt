@@ -37,7 +37,7 @@ import com.android.settingslib.Utils
  * A battery meter drawable that respects paths configured in
  * frameworks/base/core/res/res/values/config.xml to allow for an easily overrideable battery icon
  */
-open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) : Drawable() {
+open class RLandscapeBatteryDrawableStyleA(private val context: Context, frameColor: Int) : Drawable() {
 
     // Need to load:
     // 1. perimeter shape
@@ -197,12 +197,21 @@ open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) 
         val fillFraction = batteryLevel / 100f
         val fillTop =
                 if (batteryLevel >= 95)
-                    fillRect.top
+                    fillRect.right
                 else
-                    fillRect.top + (fillRect.height() * (1 - fillFraction))
+                    fillRect.right - (fillRect.width() * (1 - fillFraction))
 
-        levelRect.top = Math.floor(fillTop.toDouble()).toFloat()
-        levelPath.addRect(levelRect, Path.Direction.CCW)
+        levelRect.right = Math.floor(fillTop.toDouble()).toFloat()
+        //levelPath.addRect(levelRect, Path.Direction.CCW)
+        levelPath.addRoundRect(levelRect,
+        floatArrayOf(4.0f,
+                     4.0f, 
+                     4.0f, 
+                     4.0f, 
+                     4.0f, 
+                     4.0f, 
+                     4.0f, 
+                     4.0f), Path.Direction.CCW)
 
         // The perimeter should never change
         unifiedPath.addPath(scaledPerimeter)
@@ -226,10 +235,11 @@ open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) 
             // Dual tone means we draw the shape again, clipped to the charge level
             c.drawPath(unifiedPath, dualToneBackgroundFill)
             c.save()
-            c.clipRect(0f,
-                    bounds.bottom - bounds.height() * fillFraction,
-                    bounds.right.toFloat(),
-                    bounds.bottom.toFloat())
+            c.clipRect(
+                    bounds.left.toFloat(),
+                    0f,
+                    bounds.right + bounds.width() * fillFraction,
+                    bounds.left.toFloat())
             c.drawPath(unifiedPath, fillPaint)
             c.restore()
         } else {
@@ -259,15 +269,17 @@ open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) 
             // If power save is enabled draw the perimeter path with colorError
             c.drawPath(scaledErrorPerimeter, errorPaint)
             // And draw the plus sign on top of the fill
-            c.drawPath(scaledPlus, errorPaint)
+            if (!showPercent) {
+                c.drawPath(scaledPlus, errorPaint)
+            }
         }
         c.restore()
 
         if (!charging && batteryLevel < 100 && showPercent) {
-            textPaint.textSize = bounds.height() * 0.38f
-            val textHeight = -textPaint.fontMetrics.ascent
-            val pctX = bounds.width() * 0.5f
-            val pctY = (bounds.height() + textHeight) * 0.5f
+            textPaint.textSize = bounds.width() * 0.38f
+            val textHeight = +textPaint.fontMetrics.ascent
+            val pctX = (bounds.width() + textHeight)* 0.7f
+            val pctY = bounds.height()  * 0.8f
 
             textPaint.color = fillColor
             c.drawText(batteryLevel.toString(), pctX, pctY, textPaint)
@@ -275,8 +287,8 @@ open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) 
             textPaint.color = fillColor.toInt().inv() or 0xFF000000.toInt()
             c.save()
             c.clipRect(fillRect.left,
-                    fillRect.top + (fillRect.height() * (1 - fillFraction)),
-                    fillRect.right,
+                    fillRect.top ,
+                    fillRect.right - (fillRect.width() * (1 - fillFraction)),
                     fillRect.bottom)
             c.drawText(batteryLevel.toString(), pctX, pctY, textPaint)
             c.restore()
@@ -407,6 +419,7 @@ open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) 
         // It is expected that this view only ever scale by the same factor in each dimension, so
         // just pick one to scale the strokeWidths
         val scaledStrokeWidth =
+
                 Math.max(b.right / WIDTH * PROTECTION_STROKE_WIDTH, PROTECTION_MIN_STROKE_WIDTH)
 
         fillColorStrokePaint.strokeWidth = scaledStrokeWidth
@@ -415,27 +428,27 @@ open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) 
 
     private fun loadPaths() {
         val pathString = context.resources.getString(
-                com.android.internal.R.string.config_batterymeterPerimeterPath)
+                com.android.internal.R.string.config_batterymeterRLandPerimeterPathStyleA)
         perimeterPath.set(PathParser.createPathFromPathData(pathString))
         perimeterPath.computeBounds(RectF(), true)
 
         val errorPathString = context.resources.getString(
-                com.android.internal.R.string.config_batterymeterErrorPerimeterPath)
+                com.android.internal.R.string.config_batterymeterRLandErrorPerimeterPathStyleA)
         errorPerimeterPath.set(PathParser.createPathFromPathData(errorPathString))
         errorPerimeterPath.computeBounds(RectF(), true)
 
         val fillMaskString = context.resources.getString(
-                com.android.internal.R.string.config_batterymeterFillMask)
+                com.android.internal.R.string.config_batterymeterRLandFillMaskStyleA)
         fillMask.set(PathParser.createPathFromPathData(fillMaskString))
         // Set the fill rect so we can calculate the fill properly
         fillMask.computeBounds(fillRect, true)
 
         val boltPathString = context.resources.getString(
-                com.android.internal.R.string.config_batterymeterBoltPath)
+                com.android.internal.R.string.config_batterymeterRLandBoltPathStyleA)
         boltPath.set(PathParser.createPathFromPathData(boltPathString))
 
         val plusPathString = context.resources.getString(
-                com.android.internal.R.string.config_batterymeterPowersavePath)
+                com.android.internal.R.string.config_batterymeterRLandPowersavePathStyleA)
         plusPath.set(PathParser.createPathFromPathData(plusPathString))
 
         dualTone = context.resources.getBoolean(
@@ -443,13 +456,14 @@ open class ThemedBatteryDrawable(private val context: Context, frameColor: Int) 
     }
 
     companion object {
-        const val WIDTH = 12f
-        const val HEIGHT = 20f
+        private const val TAG = "RLandscapeBatteryDrawableStyleA"
+        private const val WIDTH = 24f
+        private const val HEIGHT = 12f
         private const val CRITICAL_LEVEL = 15
         // On a 12x20 grid, how wide to make the fill protection stroke.
         // Scales when our size changes
         private const val PROTECTION_STROKE_WIDTH = 3f
         // Arbitrarily chosen for visibility at small sizes
-        const val PROTECTION_MIN_STROKE_WIDTH = 6f
+        private const val PROTECTION_MIN_STROKE_WIDTH = 6f
     }
 }
